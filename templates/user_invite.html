@@ -1,0 +1,96 @@
+
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Email verification</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #D8E4F5;
+      margin: 0;
+      padding: 0;
+    }
+
+    a {
+      color: #51D7FF;
+    }
+    
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      border-radius: 20px;
+      background-color: #ffffff;
+      border: 1px solid #ECECEC;
+    }
+    
+    .logo {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .logo svg {
+      max-width: 150px;
+    }
+    
+    .content {
+      margin-bottom: 20px;
+    }
+    
+    .content h1 {
+      font-size: 36px;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .content p {
+      margin-bottom: 20px;
+    }
+    
+    .verify-link {
+      display: block;
+      padding: 10px 35px;
+      width: min-content;
+      margin: 0 auto;
+      margin-top: 20px;
+      background-color: #003BD1;
+
+      font-family: sans-serif, monospace;
+      font-size: 18px;
+      font-weight: 600;
+      text-align: center;
+      color: #fff !important;
+      text-decoration: none;
+
+      border-radius: 10px;
+
+      cursor: pointer;
+    }
+    
+    .footer {
+      
+      text-align: center;
+      font-size: 14px;
+      color: #878585;
+      margin-top: 50px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+        <img src="https://alphawave-storage.nyc3.digitaloceanspaces.com/apps_images/icons/logo.png" alt="">
+    </div>
+    <div class="content">
+      <h1 class="main-title">Invite</h1>
+      <p>Team <span>{{.TeamName}}</span> admin invites you to join them. To accept the invitation, click button accept</p>
+      <a href="http://{{.URL}}" class="verify-link">Accept</a>
+    </div>
+    <div class="footer">
+      <p>The code is valid for one hour but you can request another via the Alphawave website. If you did not request a verification code or you have any question please <a href="/contact-us">contact us.</a></p>
+    </div>
+  </div>
+</body>
+</html>

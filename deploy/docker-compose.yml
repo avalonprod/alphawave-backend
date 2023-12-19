@@ -1,0 +1,54 @@
+version: '3.4'
+
+services:
+  api:
+    image: ${REGISTRY}/${API_IMAGE}:${TAG}
+    container_name: backend-api
+    restart: always
+    ports:
+      - 8000:8000
+    logging:
+      driver: syslog
+      options:
+        tag: "api-production"
+    environment:
+      - MONGODB_URL=${MONGODB_URL}
+      - MONGODB_USERNAME=${MONGODB_USERNAME}
+      - MONGODB_PASSWORD=${MONGODB_PASSWORD}
+      - MONGODB_NAME=${MONGODB_NAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - FRONT_END_URL=${FRONT_END_URL}
+      - PASSWORD_SALT=${PASSWORD_SALT}
+      - JWT_SIGNING_KEY=${JWT_SIGNING_KEY}
+      - HTTP_HOST=${HTTP_HOST}
+      - OPEN_AI_API_URL=${OPEN_AI_API_URL}
+      - OPEN_AI_TOKEN=${OPEN_AI_TOKEN}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - MINIO_ACCESS_KEY_ID=${MINIO_ACCESS_KEY_ID}
+      - MINIO_SECRECT_ACCESS_KEY=${MINIO_SECRECT_ACCESS_KEY}
+      
+    networks:
+      - my_network
+  nginx:
+    image: ${REGISTRY}/${NGINX_IMAGE}:${TAG}
+    container_name: backend-api-proxy
+    restart: always
+    volumes:
+      - ./certs/:/etc/nginx/certs/
+    ports:
+      - 80:80 
+      - 443:443
+    environment:
+      - API_HOST=backend-api
+      - API_PORT=8000
+      - MATTERMOST_HOST=mattermost-backend
+      - MATTERMOST_PORT=8065
+      - SERVER_NAME=${SERVER_NAME}
+    depends_on:
+      - api
+    networks:
+      - my_network
+
+networks:
+  my_network:
+    external: true

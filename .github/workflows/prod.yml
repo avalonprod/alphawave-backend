@@ -1,0 +1,104 @@
+name: CI-prod
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  REGISTRY: "registry.digitalocean.com/backend-service"
+  API_IMAGE: "backend"
+  NGINX_IMAGE: "reverse-proxy-backend"
+  TAG: "latest"
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build API container image
+        run: docker build -f deploy/Dockerfile -t ${{ env.REGISTRY }}/${{ env.API_IMAGE }}:${{ env.TAG }} .
+      
+      - name: Build NGINX container image
+        run: docker build -f deploy/nginx/Dockerfile -t ${{ env.REGISTRY }}/${{ env.NGINX_IMAGE }}:${{ env.TAG }} .
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        
+      - name: Log in to DigitalOcean Container Registry with short-lived credentials
+        run: doctl registry login --expiry-seconds 600
+
+      - name: Push API image to DigitalOcean Container Registry
+        run: docker push ${{ env.REGISTRY }}/${{ env.API_IMAGE }}:${{ env.TAG }}
+
+      - name: Push NGINX image to DigitalOcean Container Registry
+        run: docker push ${{ env.REGISTRY }}/${{ env.NGINX_IMAGE }}:${{ env.TAG }}
+
+  deploy:
+    environment: production
+    runs-on: ubuntu-latest
+    needs: build_and_push
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Copy files via SSH
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSHKEY }}
+          port: ${{ secrets.SSH_PORT }}
+          passphrase: ${{ secrets.SSH_KEY_PASSPHRASE }}
+          source: "deploy/,!deploy/nginx,!deploy/Dockerfile"
+          target: "api"
+          strip_components: 1
+
+      - name: Deploy to Digital Ocean droplet via SSH action
+        uses: appleboy/ssh-action@master  
+        env:
+          SERVER_NAME: "api.alphawavetechnology.com"
+          HTTP_HOST: "https://api.alphawavetechnology.com"
+        with: 
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSHKEY }}
+          port: ${{ secrets.SSH_PORT }}
+          passphrase: ${{ secrets.SSH_KEY_PASSPHRASE }}
+          envs: API_IMAGE,NGINX_IMAGE,REGISTRY,SERVER_NAME,TAG,MONGODB_URL,MONGODB_USERNAME,MONGODB_PASSWORD,MONGODB_NAME,HTTP_HOST,FRONT_END_URL,PASSWORD_SALT,SMTP_PASSWORD,JWT_SIGNING_KEY
+          script: |
+            export MONGODB_URL="${{ secrets.MONGODB_URL }}"
+            export MONGODB_USERNAME=${{ secrets.MONGODB_USERNAME }}
+            export MONGODB_PASSWORD=${{ secrets.MONGODB_PASSWORD }}
+            export MONGODB_NAME="${{ secrets.MONGODB_NAME }}"
+            export HTTP_HOST=$(echo $HTTP_HOST)
+            export FRONT_END_URL=${{ secrets.FRONT_END_URL }}
+            export PASSWORD_SALT=${{ secrets.PASSWORD_SALT }}
+            export SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+            export JWT_SIGNING_KEY=${{ secrets.JWT_SIGNING_KEY }}
+            export OPEN_AI_API_URL=${{ secrets.OPEN_AI_API_URL }}
+            export OPEN_AI_TOKEN=${{ secrets.OPEN_AI_TOKEN }}
+            export MINIO_ENDPOINT=${{ secrets.MINIO_ENDPOINT }}
+            export MINIO_ACCESS_KEY_ID=${{ secrets.MINIO_ACCESS_KEY_ID }}
+            export MINIO_SECRECT_ACCESS_KEY=${{ secrets.MINIO_SECRECT_ACCESS_KEY }}
+            export REGISTRY=$(echo $REGISTRY)
+            export NGINX_IMAGE=$(echo $NGINX_IMAGE)
+            export API_IMAGE=$(echo $API_IMAGE)
+            export TAG=$(echo $TAG)
+            export SERVER_NAME=$(echo $SERVER_NAME)
+
+            docker login -u ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }} -p ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }} ${{ env.REGISTRY }}
+
+            cd api 
+            docker-compose stop
+            docker-compose rm -f
+            docker-compose pull
+            docker-compose up -d --force-recreate nginx
+
+
+
+
